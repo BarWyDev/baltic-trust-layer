@@ -130,7 +130,7 @@ h1 span, h2 span { color: var(--cyan); }
 <div class="deck" id="deck">
 
   <!-- 1 -->
-  <section class="slide active" data-notes="15 s. Jedno zdanie: nie rysujemy AIS — odpowiadamy operatorowi, czy w tym kwadracie wolno ufać GNSS. Potem od razu problem.">
+  <section class="slide active" data-notes="12 s. Jedno zdanie: nie rysujemy AIS — odpowiadamy, czy w tym kwadracie wolno ufać GNSS. Od razu problem.">
     <div class="kicker">Baltic Dual Use Hackathon 2026 · Gdańsk</div>
     <h1>Baltic <span>Trust Layer</span></h1>
     <p class="lead">Warstwa wiarygodności GNSS. Zamiast mapy pozycji — jedna odpowiedź manewrowa:<br>
@@ -145,7 +145,7 @@ h1 span, h2 span { color: var(--cyan); }
   </section>
 
   <!-- 2 PROBLEM -->
-  <section class="slide" data-notes="30 s. Trzy zjawiska naraz. Puenta: przy MV SUN od obserwacji do reakcji minęło 6–8 dni. Luka to nie brak danych — brak zagregowanej oceny w czasie minuty.">
+  <section class="slide" data-notes="25 s. Trzy liczby. Puenta: MV SUN — 6–8 dni do reakcji. Luka to nie brak AIS, tylko brak oceny akwenu w minutach.">
     <div class="kicker">Problem</div>
     <h2>Bałtyk ma dane. <span>Nie ma zaufania.</span></h2>
     <div class="grid-3">
@@ -172,7 +172,7 @@ h1 span, h2 span { color: var(--cyan); }
   </section>
 
   <!-- 3 INNOVATION -->
-  <section class="slide" data-notes="30 s. Nowość: nie kolejny AIS viewer. Dwie niezależne rodziny dowodów + agregacja w heks, nie spam alertów per statek. Dual-use: cywilny VTS i obrona dostają ten sam brief.">
+  <section class="slide" data-notes="28 s. Nowość: nie AIS viewer. Dwie rodziny dowodów. Ocena heksa, nie spam per statek. Dual-use: VTS i obrona — ten sam brief.">
     <div class="kicker">Innovation · nowość podejścia</div>
     <h2>Nie wykrywamy statku.<br><span>Oceniamy akwen.</span></h2>
     <div class="grid-2">
@@ -193,7 +193,7 @@ h1 span, h2 span { color: var(--cyan); }
   </section>
 
   <!-- 4 SCREENS -->
-  <section class="slide" data-notes="40 s. Pokaż mapę: heksy to ocena akwenu, kropki to statki. Czerwień kropki ≠ DO NOT USE. Potem dashboard live i taśma detekcji. Kliknij slajd jeśli chcesz zostać dłużej przy screenie.">
+  <section class="slide" data-notes="35 s. Mapa live. Heks = ocena akwenu. Kropka ≠ kolor heksa. Zostań tu, jeśli jury pyta o UI.">
     <div class="kicker">Produkt · z działającej aplikacji</div>
     <h2>Live AIS → heks → decyzja</h2>
     <img class="shot hero" src="img/mapa-heksy-live.png" alt="Mapa Zatoki Gdańskiej: heksy H3 i jednostki AIS">
@@ -209,7 +209,7 @@ h1 span, h2 span { color: var(--cyan); }
         <p class="caption">Live: 17 Trusted · 16 Limited · <b>3 Do Not Use</b> · 96 No Data. Wiele czerwonych statków, mało czerwonych heksów — scoring nie myli jednostki z akwenem.</p>
       </div>
       <div>
-        <img class="shot mid" src="img/demo-brief.jpg" alt="Tryb demo: rekomendacja DO NOT USE i detekcje">
+        <img class="shot mid" src="img/demo-brief.jpg" alt="Tryb demo: rekomendacja DO NOT USE i detekcje" style="object-position: left center">
         <p class="caption">Demo: brief <b>NIE UŻYWAJ GNSS</b> + taśma detekcji (INT/GEO). Scenariusze: jamming, klaster spoofing, ląd, skok, MV SUN, shadow fleet.</p>
       </div>
     </div>
@@ -316,6 +316,7 @@ function show(n) {
   posEl.textContent = `${i + 1} / ${slides.length}`;
   progEl.style.width = `${((i + 1) / slides.length) * 100}%`;
   notesEl.innerHTML = `<strong>Co mówić · ~${slides[i].dataset.notes.split('.')[0]}</strong>${slides[i].dataset.notes}`;
+  if (location.hash !== `#${i + 1}`) history.replaceState(null, '', `#${i + 1}`);
 }
 
 function tick() {
@@ -350,7 +351,12 @@ document.getElementById('deck').addEventListener('click', (e) => {
   else if (x < 0.22) show(i - 1);
 });
 
-show(0);
+const fromHash = parseInt((location.hash || '#1').slice(1), 10);
+show(Number.isFinite(fromHash) ? fromHash - 1 : 0);
+window.addEventListener('hashchange', () => {
+  const n = parseInt((location.hash || '#1').slice(1), 10);
+  if (Number.isFinite(n)) show(n - 1);
+});
 setInterval(tick, 250);
 </script>
 </body>
