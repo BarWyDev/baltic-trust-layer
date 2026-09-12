@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baltic Trust Layer — pitch 3 min</title>
+<style>
+:root {
+  --bg: #070b12;
+  --panel: #111827;
+  --card: #1a2332;
+  --line: #2a3548;
+  --text: #e8edf5;
+  --dim: #8b97a8;
+  --cyan: #06b6d4;
+  --green: #10b981;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; }
+body { overflow: hidden; }
+
+.deck { height: 100vh; position: relative; }
+.slide {
+  display: none;
+  height: 100vh;
+  padding: 56px 72px 88px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+}
+.slide.active { display: flex; }
+.kicker {
+  font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--cyan); font-weight: 600;
+}
+h1 { font-size: clamp(36px, 5vw, 64px); line-height: 1.05; letter-spacing: -1.5px; }
+h2 { font-size: clamp(28px, 3.6vw, 46px); line-height: 1.15; letter-spacing: -0.8px; }
+h1 span, h2 span { color: var(--cyan); }
+.lead { font-size: 22px; line-height: 1.45; color: #c5d0de; max-width: 920px; }
+.muted { color: var(--dim); }
+
+.grid-3, .grid-2, .grid-4 { display: grid; gap: 16px; }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-2 { grid-template-columns: 1fr 1fr; }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 22px;
+}
+.card h3 { font-size: 16px; margin-bottom: 8px; }
+.card p, .card li { font-size: 15px; line-height: 1.45; color: #c5d0de; }
+.card .num { font-size: 34px; font-weight: 800; letter-spacing: -1px; }
+.card .num.red { color: var(--red); }
+.card .num.yellow { color: var(--yellow); }
+.card .num.cyan { color: var(--cyan); }
+.card .num.green { color: var(--green); }
+.card .label { font-size: 12px; color: var(--dim); margin-top: 4px; text-transform: uppercase; letter-spacing: .6px; }
+.tag {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 999px; margin-bottom: 10px;
+}
+.tag.int { background: rgba(139,92,246,.18); color: #c4b5fd; }
+.tag.geo { background: rgba(6,182,212,.16); color: #67e8f9; }
+.tag.ok { background: rgba(16,185,129,.16); color: #6ee7b7; }
+.tag.warn { background: rgba(245,158,11,.16); color: #fcd34d; }
+
+.shot {
+  width: 100%; border-radius: 12px; border: 1px solid var(--line);
+  object-fit: cover; background: #0d1117;
+}
+.shot.hero { height: min(48vh, 460px); object-position: center 30%; }
+.shot.mid { height: min(36vh, 340px); }
+.caption { font-size: 13px; color: var(--dim); margin-top: 8px; }
+
+.levels { display: flex; gap: 10px; flex-wrap: wrap; }
+.pill { padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; border: 1px solid transparent; }
+.pill.t { color: #6ee7b7; background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.3); }
+.pill.l { color: #fcd34d; background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.3); }
+.pill.d { color: #fca5a5; background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.3); }
+.pill.n { color: #cbd5e1; background: rgba(107,114,128,.16); border-color: rgba(107,114,128,.3); }
+
+.flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; }
+.flow b { background: var(--card); border: 1px solid var(--line); padding: 8px 12px; border-radius: 8px; font-weight: 650; }
+.flow i { color: var(--cyan); font-style: normal; }
+
+.bar {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 52px;
+  background: rgba(7,11,18,.92); border-top: 1px solid var(--line);
+  display: flex; align-items: center; padding: 0 24px; gap: 16px; z-index: 20;
+}
+.progress { flex: 1; height: 3px; background: #1f2937; border-radius: 99px; overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--cyan); width: 0; }
+.bar .meta { font-size: 12px; color: var(--dim); white-space: nowrap; }
+.bar .timer { font-variant-numeric: tabular-nums; color: var(--text); font-weight: 700; min-width: 48px; }
+.bar .timer.warn { color: var(--yellow); }
+.bar .timer.over { color: var(--red); }
+.help { font-size: 11px; color: #64748b; }
+
+.notes {
+  display: none; position: fixed; right: 20px; bottom: 68px; width: min(420px, 36vw);
+  max-height: 40vh; overflow: auto; background: #0b1220; border: 1px solid var(--line);
+  border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.5; color: #cbd5e1; z-index: 21;
+}
+.notes.on { display: block; }
+.notes strong { color: var(--cyan); display: block; margin-bottom: 6px; }
+
+.name { outline: none; border-bottom: 1px dashed #475569; min-width: 80px; display: inline-block; }
+.ask { font-size: 28px; font-weight: 750; letter-spacing: -0.5px; }
+
+@media (max-width: 980px) {
+  .slide { padding: 36px 22px 80px; gap: 16px; }
+  .grid-3, .grid-2, .grid-4 { grid-template-columns: 1fr; }
+  h1 { font-size: 32px; } h2 { font-size: 24px; } .lead { font-size: 16px; }
+}
+@media print {
+  body { overflow: visible; background: #fff; color: #111; }
+  .bar, .notes { display: none !important; }
+  .slide { display: flex !important; height: auto; min-height: 100vh; page-break-after: always; color: #111; }
+  .card { border-color: #ddd; }
+}
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- 1 -->
+  <section class="slide active" data-notes="15 s. Jedno zdanie: nie rysujemy AIS — odpowiadamy operatorowi, czy w tym kwadracie wolno ufać GNSS. Potem od razu problem.">
+    <div class="kicker">Baltic Dual Use Hackathon 2026 · Gdańsk</div>
+    <h1>Baltic <span>Trust Layer</span></h1>
+    <p class="lead">Warstwa wiarygodności GNSS. Zamiast mapy pozycji — jedna odpowiedź manewrowa:<br>
+      <b style="color:#f9fafb">czy w tym kwadracie mogę oprzeć manewr na GNSS?</b></p>
+    <div class="levels">
+      <span class="pill t">TRUSTED</span>
+      <span class="pill l">LIMITED — weryfikuj radarem</span>
+      <span class="pill d">DO NOT USE</span>
+      <span class="pill n">NO DATA</span>
+    </div>
+    <p class="muted">Dual-use: to samo wyjście dla VTS / portu i dla operacji obronnej.</p>
+  </section>
+
+  <!-- 2 PROBLEM -->
+  <section class="slide" data-notes="30 s. Trzy zjawiska naraz. Puenta: przy MV SUN od obserwacji do reakcji minęło 6–8 dni. Luka to nie brak danych — brak zagregowanej oceny w czasie minuty.">
+    <div class="kicker">Problem</div>
+    <h2>Bałtyk ma dane. <span>Nie ma zaufania.</span></h2>
+    <div class="grid-3">
+      <div class="card">
+        <div class="num red">2 500</div>
+        <div class="label">zdarzeń jammingu GNSS · EUROCONTROL 2024</div>
+        <p style="margin-top:10px">Statek widzi pozycję. Nie wie, czy jest prawdziwa. Epicentrum: Kaliningrad.</p>
+      </div>
+      <div class="card">
+        <div class="num yellow">150–170</div>
+        <div class="label">tankowców shadow fleet / miesiąc</div>
+        <p style="margin-top:10px">Wyłączanie AIS, fałszywe MMSI, cisza pozycyjna przy żywym transponderze.</p>
+      </div>
+      <div class="card">
+        <div class="num cyan">35+</div>
+        <div class="label">kabli i rurociągów podmorskich</div>
+        <p style="margin-top:10px">Nord Stream, Balticconnector, Yi Peng 3, Eagle S, MV SUN przy SwePol Link.</p>
+      </div>
+    </div>
+    <div class="card" style="border-left:4px solid var(--red)">
+      <h3>Luka operacyjna — MV SUN, V 2025</h3>
+      <p>Cykliczne manewry przy kablu w polskiej EEZ. Formalna reakcja po <b>6–8 dniach</b>. Operatorzy dostają surowy AIS, nie rekomendację dla akwenu. My liczymy ją w oknie <b>15 minut</b>.</p>
+    </div>
+  </section>
+
+  <!-- 3 INNOVATION -->
+  <section class="slide" data-notes="30 s. Nowość: nie kolejny AIS viewer. Dwie niezależne rodziny dowodów + agregacja w heks, nie spam alertów per statek. Dual-use: cywilny VTS i obrona dostają ten sam brief.">
+    <div class="kicker">Innovation · nowość podejścia</div>
+    <h2>Nie wykrywamy statku.<br><span>Oceniamy akwen.</span></h2>
+    <div class="grid-2">
+      <div class="card">
+        <span class="tag int">Rodzina 1 · INT</span>
+        <h3>Deklarowana integralność</h3>
+        <p>To, co transponder sam mówi o GNSS: RAIM, dokładność pozycji, UTC (manual / dead reckoning / inoperative). Szum codzienny oddzielamy od sygnału — jeden czerwony statek nie maluje całego heksa.</p>
+      </div>
+      <div class="card">
+        <span class="tag geo">Rodzina 2 · GEO</span>
+        <h3>Geometria fizyczna</h3>
+        <p>Czy pozycja w ogóle jest możliwa: ląd poza portem, skok &gt;60 kn, klaster ≥3 MMSI w 50 m, utrata pozycji, loitering przy kablu — wzorzec MV SUN.</p>
+      </div>
+    </div>
+    <div class="card">
+      <p><b>Nowość:</b> scoring per heks H3 (~5 km²) × 15 min, nie per jednostka. Brief całego rejonu = najgorszy heks. Cywilnie: „weryfikuj radarem”. Militarnie: „GNSS denial w kwadracie X” — ten sam produkt, dwa etykiety.</p>
+    </div>
+  </section>
+
+  <!-- 4 SCREENS -->
+  <section class="slide" data-notes="40 s. Pokaż mapę: heksy to ocena akwenu, kropki to statki. Czerwień kropki ≠ DO NOT USE. Potem dashboard live i taśma detekcji. Kliknij slajd jeśli chcesz zostać dłużej przy screenie.">
+    <div class="kicker">Produkt · z działającej aplikacji</div>
+    <h2>Live AIS → heks → decyzja</h2>
+    <img class="shot hero" src="img/mapa-heksy-live.png" alt="Mapa Zatoki Gdańskiej: heksy H3 i jednostki AIS">
+    <p class="caption">Zrzut live · południowy Bałtyk. Kolor heksa = TRUSTED / LIMITED / DO NOT USE / NO DATA. Kropka zielona/czerwona = ostatni raport jednostki (RAIM / accuracy / UTC) — to nie jest kolor heksa.</p>
+  </section>
+
+  <!-- 5 SCREENS 2 -->
+  <section class="slide" data-notes="25 s. Lewy panel: 3× DO NOT USE przy wielu czerwonych kropkach — system nie histeryzuje. Prawy: surowy log detekcji. Do decyzji służy brief, nie taśma.">
+    <div class="kicker">Jakość wykonania · to, co widzi operator</div>
+    <div class="grid-2">
+      <div>
+        <img class="shot mid" src="img/dashboard-live.png" alt="Dashboard live: brief, heksy, flota">
+        <p class="caption">Live: 17 Trusted · 16 Limited · <b>3 Do Not Use</b> · 96 No Data. Wiele czerwonych statków, mało czerwonych heksów — scoring nie myli jednostki z akwenem.</p>
+      </div>
+      <div>
+        <img class="shot mid" src="img/demo-brief.jpg" alt="Tryb demo: rekomendacja DO NOT USE i detekcje">
+        <p class="caption">Demo: brief <b>NIE UŻYWAJ GNSS</b> + taśma detekcji (INT/GEO). Scenariusze: jamming, klaster spoofing, ląd, skok, MV SUN, shadow fleet.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 TECHNICAL -->
+  <section class="slide" data-notes="20 s. Pipeline istnieje i działa na żywym AIS. 10 detektorów, deduplikacja epizodów, WebSocket. Szczerze: to prototyp — nie ma jeszcze SAR/radaru. Wykrywamy niespójność, nie prawdę absolutną.">
+    <div class="kicker">Technical quality</div>
+    <h2>Działa end-to-end. <span>Nie jest slajdem.</span></h2>
+    <div class="flow">
+      <b>AIS live / demo / replay</b><i>→</i>
+      <b>10 detektorów</b><i>→</i>
+      <b>epizody, nie spam</b><i>→</i>
+      <b>score 0–100</b><i>→</i>
+      <b>4 poziomy + brief</b><i>→</i>
+      <b>WebSocket</b>
+    </div>
+    <div class="grid-4">
+      <div class="card"><div class="num cyan">10</div><div class="label">heurystyk w 2 rodzinach</div></div>
+      <div class="card"><div class="num">15 min</div><div class="label">okno operacyjne</div></div>
+      <div class="card"><div class="num">H3 r7</div><div class="label">~5 km² komórka decyzji</div></div>
+      <div class="card"><div class="num green">live</div><div class="label">AISStream · Zatoka / Bałtyk</div></div>
+    </div>
+    <div class="card">
+      <p><b>Dojrzałość prototypu:</b> FastAPI, silnik w Pythonie, dashboard bez buildu, trzy tryby źródła. <b>Granica uczciwa:</b> dowody idą z AIS — nie ma jeszcze radaru ani SAR. System mówi „niespójne”, nie „tu stoi wróg”.</p>
+    </div>
+  </section>
+
+  <!-- 7 BUSINESS + FEASIBILITY -->
+  <section class="slide" data-notes="25 s. Kto płaci: VTS, porty, operatorzy kabli, ubezpieczyciele, MW / SG. Model: abonament za akwen + API do istniejących systemów. Wdrożenie: zero nowych sensorów. 90 dni: GIS kabli, wyciszenie INT, pilotaż.">
+    <div class="kicker">Business model · Feasibility</div>
+    <h2>Sprzedajemy decyzję, <span>nie mapę.</span></h2>
+    <div class="grid-3">
+      <div class="card">
+        <span class="tag ok">Kto płaci</span>
+        <h3>Cywilnie i obronnie</h3>
+        <p>VTS i porty (Gdańsk / Gdynia), operatorzy kabli i MFW, P&amp;I / ubezpieczyciele, Marynarka i Straż Graniczna. Ten sam feed, inna etykieta.</p>
+      </div>
+      <div class="card">
+        <span class="tag warn">Monetyzacja</span>
+        <h3>SaaS + API</h3>
+        <p>Abonament za AOI i okno 15 min. API do VTS / C2 — nie wymieniamy ich systemu. Później warstwa SAR (logiczny partner: ICEYE) jako upsell potwierdzenia.</p>
+      </div>
+      <div class="card">
+        <span class="tag geo">Wdrożenie</span>
+        <h3>Bez nowych sensorów</h3>
+        <p>Dziś: otwarty AIS. Jutro: urzędowy strumień + GIS hydrograficzny, on-prem. Prototyp już liczy live. Nie czekamy na konstelację.</p>
+      </div>
+    </div>
+    <div class="card">
+      <p><b>90 dni po hackathonie:</b> oficjalne trasy kabli, filtr szumu INT, pilotaż na Zatoce, ścieżka on-prem. Ryzyko znane: sam AIS nie zamyka jednostki, która wyłącza cały transponder — to domyka dopiero radar / SAR.</p>
+    </div>
+  </section>
+
+  <!-- 8 TEAM -->
+  <section class="slide" data-notes="20 s. Wpiszcie imiona przed pitchiem (klik w kartę). Kompetencje już widać w prototypie. Zamknięcie: prosimy o pilotaż — produkt odpowiada na pytanie operatora, nie na slajd.">
+    <div class="kicker">Team · zdolność wykonania</div>
+    <h2>Zespół, który już <span>dostarczył prototyp.</span></h2>
+    <div class="grid-3">
+      <div class="card">
+        <div class="label">Domena i produkt</div>
+        <h3 class="name" contenteditable="true">Imię</h3>
+        <p>Raport ICEYE × Impulse, incydenty (MV SUN, Eagle S), brief FR-014 zamiast listy alarmów.</p>
+      </div>
+      <div class="card">
+        <div class="label">Silnik i detektory</div>
+        <h3 class="name" contenteditable="true">Imię</h3>
+        <p>AIS → heurystyki → H3 → score. Live WebSocket, trzy tryby źródła, deduplikacja epizodów.</p>
+      </div>
+      <div class="card">
+        <div class="label">Interfejs operacyjny</div>
+        <h3 class="name" contenteditable="true">Imię</h3>
+        <p>Mapa, heksy, tooltip jednostki, taśma detekcji — jeden ekran dla dyżurnego.</p>
+      </div>
+    </div>
+    <p class="ask">Prosimy o pilotaż na Zatoce. <span style="color:var(--cyan)">Warstwa zaufania, nie kolejny tracker.</span></p>
+    <p class="muted">Kliknij imię i wpisz przed wyjściem na scenę. Strzałki / spacja — slajdy. N — notatki. T — stoper 3:00.</p>
+  </section>
+
+</div>
+
+<aside class="notes" id="notes"></aside>
+
+<footer class="bar">
+  <span class="timer" id="timer">3:00</span>
+  <div class="progress"><i id="prog"></i></div>
+  <span class="meta" id="pos">1 / 8</span>
+  <span class="help">← → · N notatki · T czas · P print</span>
+</footer>
+
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+const notesEl = document.getElementById('notes');
+const posEl = document.getElementById('pos');
+const progEl = document.getElementById('prog');
+const timerEl = document.getElementById('timer');
+let i = 0;
+let t0 = null;
+const LIMIT = 180;
+
+function show(n) {
+  i = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, k) => s.classList.toggle('active', k === i));
+  posEl.textContent = `${i + 1} / ${slides.length}`;
+  progEl.style.width = `${((i + 1) / slides.length) * 100}%`;
+  notesEl.innerHTML = `<strong>Co mówić · ~${slides[i].dataset.notes.split('.')[0]}</strong>${slides[i].dataset.notes}`;
+}
+
+function tick() {
+  if (t0 == null) return;
+  const left = LIMIT - Math.floor((Date.now() - t0) / 1000);
+  const m = Math.floor(Math.abs(left) / 60);
+  const s = String(Math.abs(left) % 60).padStart(2, '0');
+  timerEl.textContent = `${left < 0 ? '-' : ''}${m}:${s}`;
+  timerEl.classList.toggle('warn', left <= 30 && left > 0);
+  timerEl.classList.toggle('over', left <= 0);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) {
+    if (['ArrowRight', 'ArrowLeft', ' ', 'n', 'N', 't', 'T'].includes(e.key) && e.target.isContentEditable) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === ' ') return;
+    }
+  }
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); if (t0 == null) t0 = Date.now(); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+  if (e.key === 'Home') show(0);
+  if (e.key === 'End') show(slides.length - 1);
+  if (e.key === 'n' || e.key === 'N') notesEl.classList.toggle('on');
+  if (e.key === 't' || e.key === 'T') { t0 = Date.now(); tick(); }
+  if (e.key === 'p' || e.key === 'P') { if (!e.metaKey && !e.ctrlKey) { /* allow browser print via cmd+p */ } }
+});
+
+document.getElementById('deck').addEventListener('click', (e) => {
+  if (e.target.closest('.name')) return;
+  const x = e.clientX / window.innerWidth;
+  if (x > 0.62) { show(i + 1); if (t0 == null) t0 = Date.now(); }
+  else if (x < 0.22) show(i - 1);
+});
+
+show(0);
+setInterval(tick, 250);
+</script>
+</body>
+</html>

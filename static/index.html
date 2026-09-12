@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baltic Trust Layer — Zatoka Gdanska</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --bg-dark: #0a0e17;
+  --bg-panel: #111827;
+  --bg-card: #1f2937;
+  --border: #374151;
+  --text: #e5e7eb;
+  --text-dim: #9ca3af;
+  --text-bright: #f9fafb;
+  --green: #10b981;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --purple: #8b5cf6;
+  --cyan: #06b6d4;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Layout */
+.app {
+  display: grid;
+  grid-template-rows: 56px 1fr 40px;
+  height: 100vh;
+}
+.header {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 20px;
+}
+.header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-bright);
+  white-space: nowrap;
+}
+.header h1 span { color: var(--cyan); }
+.header .mode-badge {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.header .stats {
+  margin-left: auto;
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.header .stats span { color: var(--text-bright); font-weight: 600; }
+
+.main {
+  display: grid;
+  grid-template-columns: 340px 1fr 340px;
+  overflow: hidden;
+}
+
+/* Brief panel (left) */
+.panel-left {
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px;
+}
+.brief-card {
+  background: var(--bg-card);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border-left: 4px solid var(--border);
+}
+.brief-card.trusted { border-left-color: var(--green); }
+.brief-card.limited { border-left-color: var(--yellow); }
+.brief-card.do_not_use { border-left-color: var(--red); }
+.brief-card.no_data { border-left-color: var(--text-dim); }
+
+.brief-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.brief-level {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.brief-level.trusted { color: var(--green); }
+.brief-level.limited { color: var(--yellow); }
+.brief-level.do_not_use { color: var(--red); }
+.brief-level.no_data { color: var(--text-dim); }
+
+.brief-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin: 16px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hex-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.hex-stat {
+  background: var(--bg-card);
+  border-radius: 6px;
+  padding: 10px;
+  text-align: center;
+}
+.hex-stat .count {
+  font-size: 24px;
+  font-weight: 700;
+}
+.hex-stat .label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* Evidence family badges */
+.family-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.family-badge.integrity {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--purple);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+.family-badge.geometry {
+  background: rgba(6, 182, 212, 0.2);
+  color: var(--cyan);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+/* Map */
+.map-container {
+  position: relative;
+}
+.offscreen-alert {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(17,24,39,0.94);
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: var(--text-bright);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+}
+.offscreen-alert button {
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#map { width: 100%; height: 100%; }
+
+/* Legend lives in the left panel — not over the map */
+.legend {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.legend h4 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+.legend-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+}
+
+/* Detection panel (right) */
+.panel-right {
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.detection-item {
+  background: var(--bg-card);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-left: 3px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.detection-item:hover { background: #283040; }
+.detection-item.high { border-left-color: var(--red); }
+.detection-item.medium { border-left-color: var(--yellow); }
+.detection-item.low { border-left-color: var(--blue); }
+
+.det-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 6px;
+}
+.det-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+.det-conf {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.det-conf.high { background: rgba(239,68,68,0.2); color: var(--red); }
+.det-conf.medium { background: rgba(245,158,11,0.2); color: var(--yellow); }
+.det-conf.low { background: rgba(59,130,246,0.2); color: var(--blue); }
+
+.det-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.det-count {
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(148,163,184,0.18);
+  color: var(--text-dim);
+}
+.det-age {
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.65;
+  margin-top: 3px;
+}
+
+/* Status bar */
+.statusbar {
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+  gap: 20px;
+}
+.statusbar .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  display: inline-block;
+  margin-right: 4px;
+  animation: pulse 2s infinite;
+}
+.statusbar .dot.offline { background: var(--red); animation: none; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Leaflet overrides for dark theme */
+.leaflet-container { background: #0d1117; }
+.leaflet-control-zoom a {
+  background: var(--bg-card) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-control-attribution {
+  background: rgba(17,24,39,0.8) !important;
+  color: var(--text-dim) !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: var(--cyan) !important; }
+.leaflet-control-layers {
+  background: var(--bg-card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+}
+.leaflet-control-layers-toggle {
+  background-color: var(--bg-card) !important;
+}
+.leaflet-control-layers label { color: var(--text) !important; }
+
+/* Vessel popup */
+.vessel-popup {
+  font-family: inherit;
+  font-size: 12px;
+}
+.vessel-popup .name { font-weight: 700; font-size: 14px; }
+.vessel-popup .mmsi { color: #666; }
+.vessel-popup table { margin-top: 8px; width: 100%; }
+.vessel-popup td { padding: 2px 4px; }
+.vessel-popup .flag-bad { color: var(--red); font-weight: 600; }
+.vessel-popup .flag-ok { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <header class="header">
+    <h1><span>&#9670;</span> Baltic Trust Layer</h1>
+    <div class="mode-badge" id="modeBadge">DEMO</div>
+    <div class="stats">
+      Raporty: <span id="statReports">0</span>
+      &nbsp;|&nbsp;
+      Detekcje: <span id="statDetections">0</span>
+      &nbsp;|&nbsp;
+      WS: <span id="statWs">&#9679;</span>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <div class="main">
+    <!-- Left: Brief & hex summary -->
+    <div class="panel-left">
+      <div class="brief-title">REKOMENDACJA MANEWROWA (FR-014)</div>
+      <div class="brief-card no_data" id="briefCard">
+        <div class="brief-level no_data" id="briefLevel">LACZENIE...</div>
+        <div class="brief-text" id="briefText">Oczekiwanie na dane z systemu.</div>
+      </div>
+
+      <div class="section-title">Heksy H3 — podsumowanie</div>
+      <div class="hex-summary">
+        <div class="hex-stat">
+          <div class="count" id="hexTrusted" style="color:var(--green)">0</div>
+          <div class="label">Trusted</div>
+        </div>
+        <div class="hex-stat">
+          <div class="count" id="hexLimited" style="color:var(--yellow)">0</div>
+          <div class="label">Limited</div>
+        </div>
+        <div class="hex-stat">
+          <div class="count" id="hexDNU" style="color:var(--red)">0</div>
+          <div class="label">Do Not Use</div>
+        </div>
+        <div class="hex-stat">
+          <div class="count" id="hexNoData" style="color:var(--text-dim)">0</div>
+          <div class="label">No Data</div>
+        </div>
+      </div>
+
+      <div class="section-title">Rodziny dowodow</div>
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <span class="family-badge integrity">Integralnosc deklarowana</span>
+        <span class="family-badge geometry">Geometria fizyczna</span>
+      </div>
+      <div class="brief-card" style="border-left-color: var(--purple)">
+        <div style="font-size:12px; color:var(--text-dim)">Integralnosc (RAIM, accuracy, timestamp)</div>
+        <div style="font-size:20px; font-weight:700; color:var(--purple)" id="intCount">0</div>
+      </div>
+      <div class="brief-card" style="border-left-color: var(--cyan)">
+        <div style="font-size:12px; color:var(--text-dim)">Geometria (pozycja, skoki, klastry, infra.)</div>
+        <div style="font-size:20px; font-weight:700; color:var(--cyan)" id="geoCount">0</div>
+      </div>
+
+      <div class="section-title">Najgorsze obszary</div>
+      <div id="worstAreas"></div>
+
+      <div class="section-title">Kontekst ICEYE × Impulse</div>
+      <div class="brief-card" style="border-left-color: var(--red); padding:10px">
+        <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); letter-spacing:0.5px; margin-bottom:6px">Zagrozenia Baltyk 2024-25</div>
+        <div style="font-size:11px; line-height:1.6; color:var(--text)">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+            <span style="color:var(--text-dim)">Zaklocenia GNSS (EUROCONTROL)</span>
+            <span style="color:var(--red); font-weight:700">2 500</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+            <span style="color:var(--text-dim)">Shadow fleet tankowcow/mies.</span>
+            <span style="color:var(--yellow); font-weight:700">150-170</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+            <span style="color:var(--text-dim)">Kable/rurociagi podmorskie</span>
+            <span style="color:var(--cyan); font-weight:700">35+</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+            <span style="color:var(--text-dim)">Jednostki na Baltyku (avg)</span>
+            <span style="color:var(--text-bright); font-weight:700">1 500</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+            <span style="color:var(--text-dim)">MV SUN — opoznienie detekcji</span>
+            <span style="color:var(--red); font-weight:700">6-8 dni</span>
+          </div>
+          <div style="display:flex; justify-content:space-between">
+            <span style="color:var(--text-dim)">BTL — czas detekcji</span>
+            <span style="color:var(--green); font-weight:700">&lt;15 min</span>
+          </div>
+        </div>
+      </div>
+      <div class="brief-card" style="border-left-color: var(--cyan); padding:10px">
+        <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); letter-spacing:0.5px; margin-bottom:6px">Incydent referencyjny</div>
+        <div style="font-size:11px; line-height:1.5; color:var(--text)">
+          <b style="color:var(--text-bright)">MV SUN</b> (V 2025) — tankowiec shadow fleet, cykliczne manewry przy SwePol Link w polskiej EEZ.
+          Reakcja formalna po 6-8 dniach. System BTL z oknami 15-min wykrywa loitering/bliskosc infrastruktury w minutach.
+        </div>
+      </div>
+
+      <div class="section-title">Legenda mapy</div>
+      <div class="legend">
+        <h4>Wiarygodnosc GNSS (heks H3)</h4>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:rgba(16,185,129,0.35)"></div>
+          <span>Trusted — pozycja wiarygodna</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:rgba(245,158,11,0.4)"></div>
+          <span>Limited — weryfikuj radarem</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:rgba(239,68,68,0.45)"></div>
+          <span>Do Not Use — nie opieraj manewru</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:rgba(107,114,128,0.2)"></div>
+          <span>No Data — za malo jednostek</span>
+        </div>
+        <h4 style="margin-top:10px">Infrastruktura podmorska</h4>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#f59e0b; width:20px; height:3px; border-radius:0"></div>
+          <span>Kabel energetyczny</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#8b5cf6; width:20px; height:3px; border-radius:0"></div>
+          <span>Gazociag</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#06b6d4; width:20px; height:3px; border-radius:0"></div>
+          <span>Kabel telekomunikacyjny</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#10b981; width:20px; height:3px; border-radius:0"></div>
+          <span>Kabel MFW (export)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:#9ca3af; width:20px; height:3px; border-radius:0; border-top:1px dashed #9ca3af"></div>
+          <span>Planowane / uszkodzone — przerywane</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:rgba(239,68,68,0.15); border:2px dashed #ef4444; width:16px; height:16px; border-radius:50%"></div>
+          <span>Incydent</span>
+        </div>
+        <div class="legend-item" style="margin-top:8px">
+          <button type="button" id="zoomBalticBtn" style="
+            background:#111827; color:#e5e7eb; border:1px solid #374151;
+            border-radius:6px; padding:6px 10px; font-size:11px; cursor:pointer; width:100%;
+          ">Pokaz caly Baltyk</button>
+        </div>
+        <div class="legend-item" style="margin-top:6px">
+          <button type="button" id="zoomMvSunBtn" style="
+            background:#111827; color:#e5e7eb; border:1px solid #374151;
+            border-radius:6px; padding:6px 10px; font-size:11px; cursor:pointer; width:100%;
+          ">MV SUN &mdash; SwePol Link</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Map -->
+    <div class="map-container">
+      <div id="map"></div>
+      <div id="offscreenAlert" class="offscreen-alert" hidden>
+        <span id="offscreenText"></span>
+        <button type="button" id="offscreenBtn">Pokaz</button>
+      </div>
+    </div>
+
+    <!-- Right: Detections -->
+    <div class="panel-right">
+      <div class="section-title">Detekcje (real-time)</div>
+      <div id="detectionList"></div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <footer class="statusbar">
+    <div><span class="dot" id="wsDot"></span> <span id="wsStatus">Laczenie...</span></div>
+    <div>Tryb: <span id="footerMode">-</span></div>
+    <div>Okno: <span id="footerWindow">-</span></div>
+    <div style="margin-left:auto">Baltic Dual Use Hackathon 2026 &mdash; Gdansk &nbsp;|&nbsp; Dane: ICEYE &times; Impulse Institute</div>
+  </footer>
+</div>
+
+<script>
+// ── Map setup ────────────────────────────────────────────
+// Widok startowy zostaje na Zatoce Gdanskiej: objecie takze korytarza
+// SwePol Link (lon ~17.0, scenariusz MV SUN) wymaga ~3 stopni dlugosci,
+// co przy tej szerokosci mapy schodzi do zoomu 8 — heksy robia sie
+// nieczytelne, a pol kadru zajmuje lad. Zamiast tego ostrzegamy
+// o krytycznych obszarach poza kadrem (patrz updateOffscreenAlert).
+const MV_SUN_VIEW = {center: [54.786, 16.605], zoom: 11};
+
+const map = L.map('map', {
+  center: [54.55, 18.90],
+  zoom: 10,
+  zoomControl: true,
+});
+map.createPane('basemapLabels');
+map.getPane('basemapLabels').style.zIndex = 350;
+map.getPane('basemapLabels').style.pointerEvents = 'none';
+
+const tilesDark = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+  {
+    attribution: 'Tiles &copy; Esri &mdash; mapa bez klucza API',
+    maxZoom: 16,
+  }
+);
+const tilesDarkLabels = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+  { maxZoom: 16, pane: 'basemapLabels' }
+);
+const tilesOsm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 19,
+});
+const tilesSat = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {
+    attribution: 'Tiles &copy; Esri',
+    maxZoom: 19,
+  }
+);
+tilesDark.addTo(map);
+tilesDarkLabels.addTo(map);
+L.control.layers(
+  {
+    'Ciemna': tilesDark,
+    'OpenStreetMap': tilesOsm,
+    'Satelita': tilesSat,
+  },
+  { 'Etykiety': tilesDarkLabels },
+  { position: 'topright', collapsed: true }
+).addTo(map);
+map.on('baselayerchange', (e) => {
+  if (e.name === 'Ciemna') {
+    if (!map.hasLayer(tilesDarkLabels)) tilesDarkLabels.addTo(map);
+  } else if (map.hasLayer(tilesDarkLabels)) {
+    map.removeLayer(tilesDarkLabels);
+  }
+});
+
+// Layers
+const vesselLayer = L.layerGroup().addTo(map);
+const hexLayer = L.layerGroup().addTo(map);
+const detectionMarkers = L.layerGroup().addTo(map);
+
+// Port masks (visual)
+const portMasks = [
+  {name: "Port Gdansk", bounds: [[54.385,18.630],[54.410,18.710]]},
+  {name: "Port Gdynia", bounds: [[54.520,18.530],[54.555,18.570]]},
+];
+portMasks.forEach(p => {
+  L.rectangle(p.bounds, {
+    color: '#6b7280', weight: 1, dashArray: '4',
+    fillColor: '#374151', fillOpacity: 0.15,
+  }).bindTooltip(p.name, {permanent: false}).addTo(map);
+});
+
+const infraLayer = L.layerGroup().addTo(map);
+const INFRA_COLORS = {
+  power_cable: '#f59e0b',
+  gas_pipeline: '#8b5cf6',
+  telecom_cable: '#06b6d4',
+  wind_export: '#10b981',
+};
+const TERMINAL_COLORS = {
+  lng: '#f59e0b',
+  oil: '#f97316',
+  container: '#3b82f6',
+  port: '#9ca3af',
+};
+
+function dashForInfra(infra) {
+  if (infra.status === 'planned' || infra.status === 'damaged') return '2 6';
+  if (infra.type === 'gas_pipeline') return '8 4';
+  return '4 2';
+}
+
+function renderInfrastructure(data) {
+  infraLayer.clearLayers();
+  const cables = data.cables || [];
+  cables.forEach(infra => {
+    if (!infra.route || infra.route.length < 2) return;
+    const color = INFRA_COLORS[infra.type] || '#6b7280';
+    const cap = infra.capacity ? ` (${infra.capacity})` : '';
+    const status = infra.status && infra.status !== 'operational' ? ` [${infra.status}]` : '';
+    const warn = infra.incident ? ' ⚠' : '';
+    L.polyline(infra.route, {
+      color,
+      weight: infra.status === 'planned' ? 2 : 2.5,
+      opacity: infra.status === 'damaged' ? 0.45 : 0.75,
+      dashArray: dashForInfra(infra),
+    }).bindTooltip(
+      `${infra.name}${cap}${status}${warn}`,
+      {sticky: true}
+    ).addTo(infraLayer);
+  });
+
+  (data.incidents || []).forEach(inc => {
+    L.circleMarker([inc.lat, inc.lon], {
+      radius: 14, color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15,
+      weight: 2, dashArray: '4 2',
+    }).bindTooltip(`${inc.name}${inc.area ? '\n' + inc.area : ''}`, {sticky: true})
+      .addTo(infraLayer);
+  });
+
+  (data.terminals || []).forEach(t => {
+    const planned = t.status === 'planned';
+    L.circleMarker([t.lat, t.lon], {
+      radius: planned ? 7 : 6,
+      color: TERMINAL_COLORS[t.type] || '#f59e0b',
+      fillColor: TERMINAL_COLORS[t.type] || '#f59e0b',
+      fillOpacity: planned ? 0.25 : 0.55,
+      weight: 1.5,
+      dashArray: planned ? '3 3' : null,
+    }).bindTooltip(
+      `${t.name}${t.capacity ? ' — ' + t.capacity : ''}${planned ? ' [planowany]' : ''}`
+    ).addTo(infraLayer);
+  });
+}
+
+fetch('/api/infrastructure')
+  .then(r => r.json())
+  .then(renderInfrastructure)
+  .catch(() => {
+    renderInfrastructure({
+      cables: [],
+      terminals: [{name: 'Naftoport Gdansk', type: 'oil', lat: 54.40, lon: 18.68}],
+      incidents: [{name: 'MV SUN — loitering V 2025', lat: 54.30, lon: 17.00, area: ''}],
+    });
+  });
+
+document.getElementById('zoomBalticBtn').addEventListener('click', () => {
+  map.fitBounds([[53.8, 10.2], [60.6, 28.8]], {padding: [20, 20]});
+});
+
+document.getElementById('zoomMvSunBtn').addEventListener('click', () => {
+  map.setView(MV_SUN_VIEW.center, MV_SUN_VIEW.zoom);
+});
+
+// State
+const vessels = {};
+
+// Lista detekcji trzyma EPIZODY, nie surowe detekcje. Detektory pracuja
+// per raport, wiec przy ~86 detekcjach/s lista 50 pozycji wymieniala sie
+// co ~0.6 s i rzadkie zdarzenia (utrata pozycji, pozycja na ladzie) znikaly
+// zanim ktokolwiek zdazyl je przeczytac. Klucz epizodu jak w silniku:
+// detekcja jednostkowa -> typ + MMSI, obszarowa -> sam typ (sklad fluktuuje).
+const episodes = [];
+const episodeIndex = new Map();   // klucz -> epizod
+const MAX_EPISODES = 40;
+const CONF_RANK = {low: 0, medium: 1, high: 2};
+let renderScheduled = false;
+
+// ── Trust level colors ───────────────────────────────────
+const TRUST_COLORS = {
+  trusted: {fill: 'rgba(16,185,129,0.3)', stroke: '#10b981'},
+  limited: {fill: 'rgba(245,158,11,0.35)', stroke: '#f59e0b'},
+  do_not_use: {fill: 'rgba(239,68,68,0.4)', stroke: '#ef4444'},
+  no_data: {fill: 'rgba(107,114,128,0.15)', stroke: '#6b7280'},
+};
+
+// ── Detection type labels ────────────────────────────────
+const DET_LABELS = {
+  raim_off: 'RAIM wylaczony',
+  low_accuracy: 'Niska dokladnosc',
+  timestamp_anomaly: 'Anomalia timestamp',
+  integrity_deg: 'Degradacja integr.',
+  position_on_land: 'Pozycja na ladzie',
+  kinematic_jump: 'Skok kinematyczny',
+  position_loss: 'Utrata pozycji',
+  convergent_cluster: 'Klaster zbiezny',
+  infra_proximity: 'Bliskosc infrastruktury',
+  loitering: 'Loitering przy infra.',
+};
+
+// ── Vessel markers ───────────────────────────────────────
+function vesselIcon(hasIssue) {
+  const color = hasIssue ? '#ef4444' : '#10b981';
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:10px; height:10px; border-radius:50%;
+      background:${color}; border:2px solid ${color};
+      box-shadow: 0 0 6px ${color}80;
+    "></div>`,
+    iconSize: [10, 10],
+    iconAnchor: [5, 5],
+  });
+}
+
+function vesselLabel(v) {
+  const name = (v.name || '').trim();
+  return name && !name.startsWith('MMSI-') ? name : `MMSI ${v.mmsi}`;
+}
+
+function updateVessel(v) {
+  const key = v.mmsi;
+  const label = vesselLabel(v);
+  if (vessels[key]) {
+    vessels[key].setLatLng([v.lat, v.lon]);
+    vessels[key].setIcon(vesselIcon(v.has_integrity_issue));
+    vessels[key].setTooltipContent(label);
+    vessels[key]._vessel = v;
+  } else {
+    const marker = L.marker([v.lat, v.lon], {
+      icon: vesselIcon(v.has_integrity_issue),
+    });
+    marker._vessel = v;
+    marker.bindTooltip(label, {
+      direction: 'top',
+      offset: [0, -8],
+      opacity: 0.95,
+    });
+    marker.bindPopup('');
+    marker.on('click', () => {
+      const cur = marker._vessel || v;
+      marker.setPopupContent(`
+        <div class="vessel-popup">
+          <div class="name">${cur.name || label}</div>
+          <div class="mmsi">MMSI: ${cur.mmsi} | ${cur.flag || '??'}${cur.imo ? ' | IMO: ' + cur.imo : ''}</div>
+          <table>
+            ${cur.callsign ? `<tr><td>Callsign</td><td>${cur.callsign}</td></tr>` : ''}
+            ${cur.draught ? `<tr><td>Zanurzenie</td><td>${cur.draught} m</td></tr>` : ''}
+            <tr><td>SOG</td><td>${cur.sog?.toFixed(1)} kn</td></tr>
+            <tr><td>COG</td><td>${cur.cog?.toFixed(1)}°</td></tr>
+            <tr><td>RAIM</td><td class="${cur.raim ? 'flag-ok' : 'flag-bad'}">${cur.raim ? 'ON' : 'OFF'}</td></tr>
+            <tr><td>Accuracy</td><td class="${cur.position_accuracy ? 'flag-ok' : 'flag-bad'}">${cur.position_accuracy ? 'HIGH' : 'LOW'}</td></tr>
+            <tr><td>UTC sec</td><td class="${cur.utc_second > 60 ? 'flag-bad' : 'flag-ok'}">${cur.utc_second_label}</td></tr>
+            <tr><td>Nav</td><td>${cur.nav_status}</td></tr>
+          </table>
+        </div>
+      `);
+    });
+    marker.addTo(vesselLayer);
+    vessels[key] = marker;
+  }
+}
+
+// ── Hex rendering ────────────────────────────────────────
+// ── Ostrzezenie o krytycznych obszarach poza kadrem ───────
+// Mapa przy zoomie 10 pokazuje sama Zatoke, a anomalie potrafia wystapic
+// dalej — scenariusz MV SUN rozgrywa sie przy SwePol Link, ~90 km na zachod.
+// Bez tego trzeba bylo wiedziec, ze nalezy przesunac mape.
+let lastHexData = {};
+
+function odmienObszar(n) {
+  if (n === 1) return 'obszar';
+  const dziesiatki = n % 100;
+  const jednosci = n % 10;
+  if (jednosci >= 2 && jednosci <= 4 && (dziesiatki < 12 || dziesiatki > 14)) return 'obszary';
+  return 'obszarow';
+}
+
+function updateOffscreenAlert() {
+  const bounds = map.getBounds();
+  const poza = Object.values(lastHexData).filter(h =>
+    (h.trust_level === 'do_not_use' || h.trust_level === 'limited') &&
+    h.center && !bounds.contains(L.latLng(h.center[0], h.center[1]))
+  );
+
+  const box = document.getElementById('offscreenAlert');
+  if (!poza.length) {
+    box.hidden = true;
+    return;
+  }
+
+  const dnu = poza.filter(h => h.trust_level === 'do_not_use').length;
+  const ile = dnu || poza.length;
+  const poziom = dnu ? 'DO_NOT_USE' : 'LIMITED';
+  const opis = `${ile} ${odmienObszar(ile)} ${poziom} poza kadrem`;
+  document.getElementById('offscreenText').textContent = `\u26A0 ${opis}`;
+  box.hidden = false;
+
+  box.dataset.bounds = JSON.stringify(
+    poza.map(h => [h.center[0], h.center[1]])
+  );
+}
+
+document.getElementById('offscreenBtn').addEventListener('click', () => {
+  const box = document.getElementById('offscreenAlert');
+  const punkty = JSON.parse(box.dataset.bounds || '[]');
+  if (!punkty.length) return;
+  // Dociagnij kadr tak, zeby objal biezacy widok i obszary poza nim
+  map.fitBounds(L.latLngBounds(punkty).extend(map.getBounds()), {padding: [30, 30]});
+});
+
+map.on('moveend zoomend', updateOffscreenAlert);
+
+function renderHexes(hexData) {
+  lastHexData = hexData;
+  hexLayer.clearLayers();
+  for (const [h3idx, hex] of Object.entries(hexData)) {
+    if (!hex.boundary) continue;
+    const colors = TRUST_COLORS[hex.trust_level] || TRUST_COLORS.no_data;
+    const latlngs = hex.boundary.map(c => [c[0], c[1]]);
+    const poly = L.polygon(latlngs, {
+      fillColor: colors.fill,
+      fillOpacity: 0.6,
+      color: colors.stroke,
+      weight: 1.5,
+      opacity: 0.7,
+    });
+    poly.bindTooltip(`
+      <b>${hex.trust_level.toUpperCase()}</b><br>
+      Score: ${hex.trust_score}<br>
+      Vessels: ${hex.vessel_count}<br>
+      Epizody: ${hex.episode_count ?? '-'} <span style="opacity:.6">(${hex.detection_count} detekcji)</span><br>
+      <small>Integrity: ${hex.integrity_detections} | Geometry: ${hex.geometry_detections}</small>
+    `, {sticky: true});
+    poly.addTo(hexLayer);
+  }
+  updateOffscreenAlert();
+}
+
+// ── Detection list ───────────────────────────────────────
+function episodeKey(det) {
+  const mmsis = det.mmsi_list || [];
+  return mmsis.length > 1
+    ? det.detection_type
+    : `${det.detection_type}|${mmsis[0] ?? '?'}`;
+}
+
+function addDetection(det) {
+  const key = episodeKey(det);
+  const now = Date.now();
+  const existing = episodeIndex.get(key);
+
+  if (existing) {
+    // Ten sam epizod — podbij licznik zamiast dokladac kolejny kafelek
+    existing.count += 1;
+    existing.lastSeen = now;
+    existing.det = det;                       // najswiezszy opis
+    if (CONF_RANK[det.confidence] > CONF_RANK[existing.det_confidence]) {
+      existing.det_confidence = det.confidence;
+    }
+  } else {
+    const episode = {
+      key, det, count: 1, firstSeen: now, lastSeen: now,
+      det_confidence: det.confidence,
+    };
+    // Nowy epizod na gore; kolejnosc wg pierwszego wystapienia, wiec
+    // istniejace wpisy nie skacza po liscie przy kazdej aktualizacji
+    episodes.unshift(episode);
+    episodeIndex.set(key, episode);
+    while (episodes.length > MAX_EPISODES) {
+      // Usun epizod najdluzej nieaktywny, a nie po prostu ostatni na liscie —
+      // inaczej wciaz trwajace zdarzenie na dole wypadaloby i wracalo
+      // chwile pozniej z licznikiem zresetowanym do 1
+      let oldest = 0;
+      for (let i = 1; i < episodes.length; i++) {
+        if (episodes[i].lastSeen < episodes[oldest].lastSeen) oldest = i;
+      }
+      const [dropped] = episodes.splice(oldest, 1);
+      episodeIndex.delete(dropped.key);
+    }
+  }
+
+  scheduleDetectionRender();
+
+  // Flash marker on map
+  if (det.lat && det.lon) {
+    const color = det.confidence === 'high' ? '#ef4444'
+      : det.confidence === 'medium' ? '#f59e0b' : '#3b82f6';
+    const circle = L.circleMarker([det.lat, det.lon], {
+      radius: 12, color, fillColor: color, fillOpacity: 0.3,
+      weight: 2,
+    }).addTo(detectionMarkers);
+    setTimeout(() => detectionMarkers.removeLayer(circle), 8000);
+  }
+}
+
+function scheduleDetectionRender() {
+  // Przy 86 detekcjach/s przebudowa listy na kazda z nich to czysta strata;
+  // 4 razy na sekunde wystarczy, a lista przestaje migotac
+  if (renderScheduled) return;
+  renderScheduled = true;
+  setTimeout(() => { renderScheduled = false; renderDetectionList(); }, 250);
+}
+
+function relativeAge(ts) {
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 5) return 'teraz';
+  if (s < 60) return `${s} s temu`;
+  return `${Math.round(s / 60)} min temu`;
+}
+
+function renderDetectionList() {
+  const el = document.getElementById('detectionList');
+  el.innerHTML = episodes.map(ep => {
+    const d = ep.det;
+    const conf = ep.det_confidence;
+    const family = d.family === 'declared_integrity' ? 'integrity' : 'geometry';
+    const repeats = ep.count > 1
+      ? `<span class="det-count" title="tyle razy potwierdzone w tym epizodzie">&times;${ep.count}</span>`
+      : '';
+    return `
+      <div class="detection-item ${conf}" onclick="map.setView([${d.lat},${d.lon}], 12)">
+        <div class="det-header">
+          <div>
+            <span class="det-type">${DET_LABELS[d.detection_type] || d.detection_type}</span>
+            <span class="family-badge ${family}" style="margin-left:4px">
+              ${family === 'integrity' ? 'INT' : 'GEO'}
+            </span>
+            ${repeats}
+          </div>
+          <span class="det-conf ${conf}">${conf}</span>
+        </div>
+        <div class="det-desc">${d.description}</div>
+        <div class="det-age">${relativeAge(ep.lastSeen)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Odswiezaj same znaczniki czasu, zeby "teraz" nie zostawalo na ekranie
+setInterval(() => { if (episodes.length) renderDetectionList(); }, 5000);
+
+// ── Brief update ─────────────────────────────────────────
+function updateBrief(brief) {
+  if (!brief) return;
+  const card = document.getElementById('briefCard');
+  const level = document.getElementById('briefLevel');
+  const text = document.getElementById('briefText');
+
+  const tl = brief.overall_trust || 'no_data';
+  card.className = `brief-card ${tl}`;
+  level.className = `brief-level ${tl}`;
+
+  const LEVEL_LABELS = {
+    trusted: 'POZYCJA WIARYGODNA',
+    limited: 'OGRANICZONE ZAUFANIE',
+    do_not_use: 'NIE UZYWAJ GNSS',
+    no_data: 'BRAK DANYCH',
+  };
+  level.textContent = LEVEL_LABELS[tl] || tl.toUpperCase();
+  text.textContent = brief.recommendation || '';
+
+  // Hex summary
+  const hs = brief.hex_summary || {};
+  document.getElementById('hexTrusted').textContent = hs.trusted || 0;
+  document.getElementById('hexLimited').textContent = hs.limited || 0;
+  document.getElementById('hexDNU').textContent = hs.do_not_use || 0;
+  document.getElementById('hexNoData').textContent = hs.no_data || 0;
+
+  // Worst areas
+  const wa = document.getElementById('worstAreas');
+  const worst = brief.worst_areas || [];
+  wa.innerHTML = worst.map(h => {
+    const colors = TRUST_COLORS[h.trust_level] || TRUST_COLORS.no_data;
+    return `
+      <div class="brief-card" style="border-left-color:${colors.stroke}; padding:10px; cursor:pointer"
+           onclick="map.setView([${h.center[0]},${h.center[1]}], 12)">
+        <div style="font-size:11px; color:var(--text-dim)">Score: ${h.trust_score}</div>
+        <div style="font-size:13px; font-weight:600; color:${colors.stroke}">
+          ${h.trust_level.toUpperCase()} — ${h.vessel_count} units, ${h.episode_count ?? h.detection_count} epizodow
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── WebSocket ────────────────────────────────────────────
+let ws;
+let intTotal = 0, geoTotal = 0;
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+  ws.onopen = () => {
+    document.getElementById('wsDot').className = 'dot';
+    document.getElementById('wsStatus').textContent = 'Polaczono';
+    document.getElementById('statWs').style.color = '#10b981';
+    document.getElementById('statWs').textContent = '●';
+  };
+
+  ws.onclose = () => {
+    document.getElementById('wsDot').className = 'dot offline';
+    document.getElementById('wsStatus').textContent = 'Rozlaczono';
+    document.getElementById('statWs').style.color = '#ef4444';
+    setTimeout(connect, 3000);
+  };
+
+  ws.onmessage = (ev) => {
+    const data = JSON.parse(ev.data);
+
+    if (data.type === 'init' || data.type === 'hex_update') {
+      if (data.hexes) renderHexes(data.hexes);
+      if (data.vessels) data.vessels.forEach(updateVessel);
+      if (data.brief) updateBrief(data.brief);
+      if (data.stats) {
+        document.getElementById('statReports').textContent = data.stats.reports || 0;
+        document.getElementById('statDetections').textContent = data.stats.detections || 0;
+        if (data.stats.mode) {
+          document.getElementById('modeBadge').textContent = data.stats.mode.toUpperCase();
+          document.getElementById('footerMode').textContent = data.stats.mode;
+        }
+      }
+    }
+
+    if (data.type === 'report') {
+      if (data.vessel) updateVessel(data.vessel);
+      if (data.detections) {
+        data.detections.forEach(d => {
+          addDetection(d);
+          if (d.family === 'declared_integrity') intTotal++;
+          else geoTotal++;
+        });
+        document.getElementById('intCount').textContent = intTotal;
+        document.getElementById('geoCount').textContent = geoTotal;
+      }
+    }
+
+    if (data.type === 'brief') {
+      updateBrief(data.brief);
+    }
+  };
+}
+
+connect();
+
+// Request brief periodically
+setInterval(() => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send('brief');
+  }
+}, 15000);
+</script>
+</body>
+</html>
